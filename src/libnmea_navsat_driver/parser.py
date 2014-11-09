@@ -113,6 +113,9 @@ parse_maps = {
         ("longitude_direction", str, 6),
         ("speed", convert_knots_to_mps, 7),
         ("true_course", convert_deg_to_rads, 8),
+        ],
+        "HDT": [
+            ("true_heading", convert_deg_to_rads, 1),
         ]
     }
 
