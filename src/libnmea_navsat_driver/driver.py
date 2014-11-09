@@ -33,8 +33,9 @@
 import math
 
 import rospy
+import tf
 
-from sensor_msgs.msg import NavSatFix, NavSatStatus, TimeReference
+from sensor_msgs.msg import NavSatFix, NavSatStatus, TimeReference, Imu
 from geometry_msgs.msg import TwistStamped
 
 from libnmea_navsat_driver.checksum_utils import check_nmea_checksum
@@ -46,6 +47,7 @@ class RosNMEADriver(object):
         self.fix_pub = rospy.Publisher('fix', NavSatFix, queue_size=1)
         self.vel_pub = rospy.Publisher('vel', TwistStamped, queue_size=1)
         self.time_ref_pub = rospy.Publisher('time_reference', TimeReference, queue_size=1)
+        self.heading_pub = rospy.Publisher('heading', Imu, queue_size=1)
 
         self.time_ref_source = rospy.get_param('~time_ref_source', None)
         self.use_RMC = rospy.get_param('~useRMC', False)
@@ -73,6 +75,10 @@ class RosNMEADriver(object):
         current_time_ref = TimeReference()
         current_time_ref.header.stamp = current_time
         current_time_ref.header.frame_id = frame_id
+        # for publishing HDT heading as Imu message
+        current_heading = Imu()
+        current_heading.header.stamp = current_time
+        current_heading.header.frame_id = frame_id
         if self.time_ref_source:
             current_time_ref.source = self.time_ref_source
         else:
@@ -165,6 +171,20 @@ class RosNMEADriver(object):
                 current_vel.twist.linear.y = data['speed'] * \
                     math.cos(data['true_course'])
                 self.vel_pub.publish(current_vel)
+        
+        elif not self.use_RMC and 'HDT' in parsed_sentence:
+            data = parsed_sentence['HDT']
+            tempHeading = data['true_heading']
+            ccHeading = (2 * math.pi) - tempHeading
+
+            q = tf.transformations.quaternion_from_euler(0, 0, ccHeading)
+            current_heading.orientation.x = q[0]
+            current_heading.orientation.y = q[1]
+            current_heading.orientation.z = q[2]
+            current_heading.orientation.w = q[3]
+
+            self.heading_pub.publish(current_heading)
+
         else:
             return False
 
