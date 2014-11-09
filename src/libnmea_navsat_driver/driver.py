@@ -33,9 +33,11 @@
 import math
 
 import rospy
+import tf
 
-from sensor_msgs.msg import NavSatFix, NavSatStatus, TimeReference
+from sensor_msgs.msg import NavSatFix, NavSatStatus, TimeReference, Imu
 from geometry_msgs.msg import TwistStamped
+from std_msgs.msg import Float32, String
 
 from libnmea_navsat_driver.checksum_utils import check_nmea_checksum
 import libnmea_navsat_driver.parser
@@ -44,6 +46,8 @@ class RosNMEADriver(object):
     def __init__(self):
         self.fix_pub = rospy.Publisher('fix', NavSatFix)
         self.vel_pub = rospy.Publisher('vel', TwistStamped)
+        self.heading_pub = rospy.Publisher('heading', Imu)
+        self.direction_pub = rospy.Publisher('direction', String) # For testing
         self.time_ref_pub = rospy.Publisher('time_reference', TimeReference)
 
         self.time_ref_source = rospy.get_param('~time_ref_source',
@@ -60,7 +64,7 @@ class RosNMEADriver(object):
 
         parsed_sentence = libnmea_navsat_driver.parser.parse_nmea_sentence(nmea_string)
         if not parsed_sentence:
-            rospy.logdebug("Failed to parse NMEA sentence. Sentece was: %s" %
+            rospy.logdebug("Failed to parse NMEA sentence. Sentence was: %s" %
                 nmea_string)
             return False
 
@@ -71,6 +75,13 @@ class RosNMEADriver(object):
         current_fix = NavSatFix()
         current_fix.header.stamp = current_time
         current_fix.header.frame_id = frame_id
+
+        current_heading = Imu()
+	current_heading.header.stamp = current_time
+	current_heading.header.frame_id = 'base_footprint'	
+
+        current_direction = String() # For testing
+
         current_time_ref = TimeReference()
         current_time_ref.header.stamp = current_time
         current_time_ref.header.frame_id = frame_id
@@ -79,7 +90,37 @@ class RosNMEADriver(object):
         else:
             current_time_ref.source = frame_id
 
-        if not self.use_RMC and 'GGA' in parsed_sentence:
+        # Add capture/publishing heading info
+        if not self.use_RMC and 'HDT' in parsed_sentence:
+            #rospy.loginfo("HDT!")
+            data = parsed_sentence['HDT']
+	    tempHeading = data['true_heading']
+	    ccHeading = (2 * math.pi) - tempHeading
+
+	    q = tf.transformations.quaternion_from_euler(0,0,ccHeading)
+	    current_heading.orientation.x = q[0]
+	    current_heading.orientation.y = q[1]
+	    current_heading.orientation.z = q[2]
+	    current_heading.orientation.w = q[3]
+
+            #current_time_ref.time_ref = rospy.Time.from_sec(data['utc_time'])
+
+            #if   (current_heading.data < .3927):     current_direction.data = "N"
+            #elif (current_heading.data < 1.178):     current_direction.data = "NE"
+            #elif (current_heading.data < 1.9635):    current_direction.data = "E"
+            #elif (current_heading.data < 2.74889):   current_direction.data = "SE"
+            #elif (current_heading.data < 3.53429):   current_direction.data = "S"
+            #elif (current_heading.data < 4.31969):   current_direction.data = "SW"
+            #elif (current_heading.data < 5.10509):   current_direction.data = "W"
+            #elif (current_heading.data < 5.89048):   current_direction.data = "NW"
+            #else:                                    current_direction.data = "N"
+
+            self.heading_pub.publish(current_heading)
+            #self.direction_pub.publish(current_direction)
+            #self.time_ref_pub.publish(current_time_ref)
+
+        elif 'GGA' in parsed_sentence:
+            #rospy.loginfo("GGA!")
             data = parsed_sentence['GGA']
             gps_qual = data['fix_type']
             if gps_qual == 0:
@@ -114,7 +155,7 @@ class RosNMEADriver(object):
             current_fix.position_covariance_type = \
                 NavSatFix.COVARIANCE_TYPE_APPROXIMATED
 
-            #Altitude is above ellipsoid, so adjust for mean-sea-level
+            # Altitude is above ellipsoid, so adjust for mean-sea-level
             altitude = data['altitude'] + data['mean_sea_level']
             current_fix.altitude = altitude
 

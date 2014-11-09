@@ -4,7 +4,7 @@ project(nmea_navsat_driver)
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
-find_package(catkin REQUIRED COMPONENTS geometry_msgs nmea_msgs sensor_msgs)
+find_package(catkin REQUIRED COMPONENTS std_msgs geometry_msgs sensor_msgs)
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -21,9 +21,7 @@ catkin_python_setup()
 
 ## Generate messages in the 'msg' folder
 # add_message_files(
-#   FILES
-#   Message1.msg
-#   Message2.msg
+# 	FILES
 # )
 
 ## Generate services in the 'srv' folder
@@ -36,7 +34,6 @@ catkin_python_setup()
 ## Generate added messages and services with any dependencies listed here
 # generate_messages(
 #   DEPENDENCIES
-#   geometry_msgs#   nmea_msgs#   sensor_msgs
 # )
 
 ###################################
@@ -49,7 +46,7 @@ catkin_python_setup()
 ## CATKIN_DEPENDS: catkin_packages dependent projects also need
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
-  CATKIN_DEPENDS geometry_msgs nmea_msgs sensor_msgs
+  CATKIN_DEPENDS geometry_msgs nmea_msgs sensor_msgs std_msgs
 )
 
 ###########

@@ -94,7 +94,12 @@ parse_maps = {
             ("longitude_direction", str, 6),
             ("speed", convert_knots_to_mps, 7),
             ("true_course", convert_deg_to_rads, 8),
-            ]
+            ],
+        "HDT": [
+            ("true_heading", convert_deg_to_rads, 1),
+            ],
+        "VTG": [
+            ],
         }
 
 def parse_nmea_sentence(nmea_sentence):
@@ -108,8 +113,8 @@ def parse_nmea_sentence(nmea_sentence):
     sentence_type = fields[0][3:]
 
     if not sentence_type in parse_maps:
-        #print sentence_type
-        #print "Sentence type not in parse map"
+        print sentence_type
+        print "Sentence type not in parse map"
         return False
 
     parse_map = parse_maps[sentence_type]
